@@ -13,7 +13,7 @@ using System.Windows.Forms;
 
 namespace ColorPickerFlash
 {
-    public partial class Form1 : Form
+    public partial class MainForm : Form
     {
         private TextBox text;
 
@@ -26,7 +26,7 @@ namespace ColorPickerFlash
         private Color color;
         private Color previousColor;
 
-        public Form1()
+        public MainForm()
         {
             InitializeComponent();
             this.BackColor = Color.Red;
