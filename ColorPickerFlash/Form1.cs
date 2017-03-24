@@ -16,15 +16,13 @@ namespace ColorPickerFlash
     public partial class MainForm : Form
     {
         private TextBox text;
+        private ColorShower colorShower;
 
-        private Bitmap backImageUp;
-        private Bitmap backImageDown;
-
-        private PictureBox upSidePictureBox;
-        private PictureBox downSidePictureBox;
-
-        private Color color;
+        private Color newColor;
         private Color previousColor;
+
+        private Bitmap screenCapture;
+        private bool mouseIsDown;
 
         public MainForm()
         {
@@ -49,39 +47,33 @@ namespace ColorPickerFlash
              */
             #endregion
 
-            upSidePictureBox = new PictureBox();
-            downSidePictureBox = new PictureBox();
-
-            backImageUp = new Bitmap(Resources.UpHandSide);
-            backImageDown = new Bitmap(Resources.DownHandSide);
-
             text = new TextBox();
-
-            upSidePictureBox.Size = new Size(180, 90);
-            upSidePictureBox.Image = backImageUp;
-            upSidePictureBox.SizeMode = PictureBoxSizeMode.Zoom;
-
-            downSidePictureBox.Size = new Size(180, 90);
-            downSidePictureBox.Image = backImageDown;
-            downSidePictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            text.Font = new Font("Arial", 13);
 
             this.Cursor = Cursors.Cross;
 
             this.KeyPress += OnKeyPress;
-            upSidePictureBox.MouseDown += OnClickOnForm1;
-            downSidePictureBox.MouseDown += OnClickOnForm1;
-
             this.MouseMove += OnMouseMove;
-            upSidePictureBox.MouseMove += OnMouseMove;
-            downSidePictureBox.MouseMove += OnMouseMove;
+            this.MouseDown += onMouseDown;
+            this.MouseUp += onMouseUp;
 
-            text.Location = new Point(MousePosition.X + 20, MousePosition.Y - 20);
-
+            colorShower = new ColorShower();
             this.Controls.Add(text);
-            this.Controls.Add(upSidePictureBox);
-            this.Controls.Add(downSidePictureBox);
+            this.Controls.Add(colorShower);
+        }
 
+        private void onMouseUp(object sender, MouseEventArgs e)
+        {
+            mouseIsDown = false;
+            colorShower.Visible = false;
+        }
 
+        private void onMouseDown(object sender, MouseEventArgs e)
+        {
+            mouseIsDown = true;
+            colorShower.Visible = true;
+            CaptureScreen();
+            colorShower.UpperSemiCircleColor = GetCurrentColor();
         }
 
         private void OnKeyPress(object sender, KeyPressEventArgs e)
@@ -112,93 +104,52 @@ namespace ColorPickerFlash
             //this.BackgroundImage = printscreen; 
             #endregion
 
-            color = GetCurrentColor();
+            newColor = GetCurrentColor();
 
-            text.Text = color.Name.Substring(2);
+            text.Text = newColor.Name.Substring(2);
             text.Font = new Font("Arial", 13);
-            text.BackColor = color;
+            text.BackColor = newColor;
             text.Location = new Point(MousePosition.X + 20, MousePosition.Y - 20);
-
         }
+
+
 
         private void OnMouseMove(object sender, EventArgs e)
         {
+            if (!mouseIsDown) return;
             int x, y;
 
             x = MousePosition.X;
             y = MousePosition.Y;
 
-            upSidePictureBox.Location = new Point(x - 90, y - 90);
-            downSidePictureBox.Location = new Point(x - 90, y);
+            newColor = GetCurrentColor();
 
-            //text.Location = new Point(x, y);                // This also slows down the app
+            text.Text = newColor.Name.Substring(2);
+            text.BackColor = newColor;
+            text.Location = new Point(x + 20, y - 20);
+            colorShower.Center = MousePosition;
+            colorShower.LowerSemiCircleColor = newColor;
+            colorShower.Invalidate(); //repaint
+        }
 
-            // color = GetCurrentColor();                     // This kills the app
-
-            if (color != previousColor)
+        private void CaptureScreen()
+        {
+            if (screenCapture == null)
             {
-                //  upSidePictureBox.BackColor = color;        // These two lines 
-                //  downSidePictureBox.BackColor = color;      // behaves as a bug
-                previousColor = color;
+                screenCapture = new Bitmap(Size.Width, Size.Height);
             }
-
-            #region MyRegion
-            // printscreen.Save(@"C:\Users\aslan\Desktop\Aslan\AtlTechInfo\ColorPickerFlash\ColorPickerFlash\Images\printScre.jpg", ImageFormat.Jpeg);
-
-            // color = GetCurrentColor();
-            //upSidePictureBox.BackColor = color; 
-            //downSidePictureBox.BackColor = color; 
-            #endregion
+            using (Graphics graphics = Graphics.FromImage(screenCapture))
+            {
+                graphics.CopyFromScreen(0, 0, 0, 0, screenCapture.Size);
+            }
         }
 
         private Color GetCurrentColor()
         {
-            int x, y;
-            x = MousePosition.X;
-            y = MousePosition.Y;
+            int x = MousePosition.X;
+            int y = MousePosition.Y;
 
-            Bitmap printscreen = new Bitmap(2, 2);
-
-            Graphics graphics = Graphics.FromImage(printscreen as Image);
-            graphics.CopyFromScreen(x - 2, y - 2, 0, 0, printscreen.Size);
-
-            return printscreen.GetPixel(1, 1);
+            return screenCapture.GetPixel(x, y);
         }
-
-        #region MyRegion
-        // Code for allowing clicking through of the form
-        /*  protected override void WndProc(ref Message m)
-          {
-              const uint WM_NCHITTEST = 0x84;
-            //graphics.CopyFromScreen(0, 0, 0, 0, printscreen.Size);
-            //Bitmap printscreen = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
-
-              const int HTTRANSPARENT = -1;
-              const int HTCLIENT = 1;
-              const int HTCAPTION = 2;
-              // ... or define an enum with all the values
-
-              if (m.Msg == WM_NCHITTEST)
-              {
-                  // If it's the message we want, handle it.
-                  if (false)
-                  {
-                      // If we're drawing, we want to see mouse events like normal.
-                      m.Result = new IntPtr(HTCLIENT);
-                  }
-                  else
-                  {
-                      // Otherwise, we want to pass mouse events on to the desktop,
-                      // as if we were not even here.
-                      m.Result = new IntPtr(HTTRANSPARENT);
-                  }
-                  return;  // bail out because we've handled the message
-              }
-
-              // Otherwise, call the base class implementation for default processing.
-              base.WndProc(ref m);
-          }
-          */
-        #endregion
     }
 }
